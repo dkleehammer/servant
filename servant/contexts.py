@@ -4,7 +4,7 @@ response.  It provides convenience methods to "pass-through" to those objects.
 """
 
 import os, binascii
-from .sessions import Session
+# from .sessions import Session
 from .responses import Response
 
 class Context:
@@ -61,39 +61,39 @@ class Context:
         """
         return self.request.url
 
-    def create_session(self, user_id=None, auth_status=None, login=None, name=None):
-        """
-        Creates a new session-id and Session object and sets the 'sid' response
-        cookie.
-
-        This should only be used when the user is logging in.  This cannot be
-        used with a user that is already logged in.
-        """
-        assert self.session is None, 'There is already a session-id assigned to this context'
-
-        self.sid = genrandom(20)
-        self.session = Session(id=self.sid, user_id=user_id, login=login, auth_status=auth_status,
-                               name=name)
-        self.set_cookie('sid', self.sid)
+    # def create_session(self, user_id=None, auth_status=None, login=None, name=None):
+    #     """
+    #     Creates a new session-id and Session object and sets the 'sid' response
+    #     cookie.
+    #
+    #     This should only be used when the user is logging in.  This cannot be
+    #     used with a user that is already logged in.
+    #     """
+    #     assert self.session is None, 'There is already a session-id assigned to this context'
+    #
+    #     self.sid = genrandom(20)
+    #     self.session = Session(id=self.sid, user_id=user_id, login=login, auth_status=auth_status,
+    #                            name=name)
+    #     self.set_cookie('sid', self.sid)
 
     @property
     def user_id(self):
         return self.session and self.session.user_id
 
-    def delete_session(self):
-        """
-        Marks the session for deleting and deletes the "sid" cookie.
-
-        The session middleware is response for actually deleting the session and
-        the end of request processing.
-        """
-        if self.session:
-            assert self._deleted_session is None, 'There is already a deleted session!'
-            self._deleted_session = self.session
-            self.session = None
-
-        self.delete_cookie('sid')
-        self.sid = None
+    # def delete_session(self):
+    #     """
+    #     Marks the session for deleting and deletes the "sid" cookie.
+    #
+    #     The session middleware is response for actually deleting the session and
+    #     the end of request processing.
+    #     """
+    #     if self.session:
+    #         assert self._deleted_session is None, 'There is already a deleted session!'
+    #         self._deleted_session = self.session
+    #         self.session = None
+    #
+    #     self.delete_cookie('sid')
+    #     self.sid = None
 
     def set_cookie(self, name, value, http_only=True):
         """

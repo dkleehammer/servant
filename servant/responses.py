@@ -11,8 +11,12 @@ from .lowerdict import LowerDict
 HTTP_COOKIE_PATH   = '/'
 HTTP_COOKIE_SECURE = ''
 
-APP_VERSION = os.environ['APP_VERSION']
-APP_VERSION_BYTES = APP_VERSION.encode('utf8')
+# REVIEW: I was using the application version as an etag for the HTML,
+# etc.  This will need to be switched to the SHA1 of each file or
+# something.  (Would would mean we can't stream responses since we
+# need the contents to create the etag.)
+APP_VERSION = os.environ.get('APP_VERSION', None)
+APP_VERSION_BYTES = APP_VERSION and APP_VERSION.encode('utf8') or None
 
 CACHE_CONTROL_NEVER   = 'max-age=0, no-cache, no-store'
 CACHE_CONTROL_HOUR    = 'private, max-age=3600'     # 1 hour
@@ -111,7 +115,9 @@ class Response:
             return json.dumps(body).encode('utf8')
 
         if isinstance(body, File):
-            if APP_VERSION != 'dev':
+            # REVIEW: This is hardcoded.  We need an initialization
+            # function or something to set things like this.
+            if APP_VERSION and APP_VERSION != 'dev':
                 self.headers['etag'] = APP_VERSION_BYTES
 
                 if body.relpath.endswith('/index.html'):
@@ -126,7 +132,7 @@ class Response:
             # (I've put this here so we get the cache-control header even on a
             # 304.  Is that right?)
 
-            if APP_VERSION != 'dev':
+            if APP_VERSION and APP_VERSION != 'dev':
                 # If the browser has supplied a previous etag and it matches,
                 # return a 304.
                 oldetag = ctx.request.headers.get('if-none-match', None)

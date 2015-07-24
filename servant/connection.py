@@ -50,8 +50,8 @@ class HttpProtocol(Protocol):
         HttpProtocol._next_id += 1
 
         self.middleware = []
-        from .sessions import SessionMiddleware
-        self.middleware.append(SessionMiddleware())
+        # from .sessions import SessionMiddleware
+        # self.middleware.append(SessionMiddleware())
         from .permissions import PermissionsMiddleware
         self.middleware.append(PermissionsMiddleware())
         from .security_headers import SecurityHeadersMiddlware

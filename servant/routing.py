@@ -14,19 +14,19 @@ _routes = []
 # The global list of registered routes as Route objects.
 
 
-if __debug__:
-    _ALL_PERMISSIONS = set() # Permissions from the db to help us catch typos
-    import os, psycopg2
-
-    cnxn   = psycopg2.connect(os.environ['DATABASE_URL'])
-    cursor = cnxn.cursor()
-    cursor.execute("select permission from permissions")
-    _ALL_PERMISSIONS.update(row[0] for row in cursor)
-    cursor.close()
-    cnxn.close()
-
-    _ALL_PERMISSIONS.add('USER')
-    _ALL_PERMISSIONS.add('PUBLIC')
+# if __debug__:
+#     _ALL_PERMISSIONS = set() # Permissions from the db to help us catch typos
+#     import os, psycopg2
+#
+#     cnxn   = psycopg2.connect(os.environ['DATABASE_URL'])
+#     cursor = cnxn.cursor()
+#     cursor.execute("select permission from permissions")
+#     _ALL_PERMISSIONS.update(row[0] for row in cursor)
+#     cursor.close()
+#     cnxn.close()
+#
+#     _ALL_PERMISSIONS.add('USER')
+#     _ALL_PERMISSIONS.add('PUBLIC')
 
 
 def route(pattern, permissions='USER'):
@@ -95,10 +95,10 @@ class Route:
         self.func = coroutine(func)
 
         self.permissions = set(permissions.split())
-        if __debug__:
-            unknown = self.permissions - _ALL_PERMISSIONS
-            assert not unknown, "Route {} has invalid permissions: {}.  Did you forget to add them to the database?".format(
-                pattern, ','.join(unknown))
+        # if __debug__:
+        #     unknown = self.permissions - _ALL_PERMISSIONS
+        #     assert not unknown, "Route {} has invalid permissions: {}.  Did you forget to add them to the database?".format(
+        #         pattern, ','.join(unknown))
 
         self.regexp = None
 
