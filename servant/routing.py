@@ -31,13 +31,11 @@ def route(pattern, **kwargs):
         # assert not inspect.isgenerator(func) and not inspect.iscoroutine(func)
         assert not any(r.pattern == pattern for r in _routes), 'URL "{}" registered twice: first={} second={}'.format(pattern, _routes[pattern], func)
 
-        route = Route(pattern, func, kwargs)
+        r = Route(pattern, func, kwargs)
         for m in middleware:
-            f = getattr(m, 'register_route', None)
-            if f:
-                f(route)
+            m.register_route(r)
 
-        _routes.append(route)
+        _routes.append(r)
     return wrapper
 
 

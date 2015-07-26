@@ -23,8 +23,9 @@ class Request:
       A dictionary (case-sensitive) mapping cookie names to values.
 
     form
-      A dictionary of all variables in the query string and in the body if it
-      was JSON data.
+      A dictionary of variables from either the query string if a GET
+      or from form or JSON data if it is a POST.  These are preparsed
+      so they can be passed to the route in parameters.
     """
     _next_id = 1
 

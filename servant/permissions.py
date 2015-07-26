@@ -3,11 +3,12 @@ Middleware to check page permissions against the users permissions in the sessio
 """
 
 import logging
+from .middleware import Middleware
 from .errors import HttpError
 
 logger = logging.getLogger('permissions')
 
-class PermissionsMiddleware:
+class PermissionsMiddleware(Middleware):
     """
     Checks the user against the current route's permissions.
 
@@ -27,7 +28,7 @@ class PermissionsMiddleware:
     def register_route(self, route):
         required = route.route_keywords.get('permissions')
         if not required:
-            raise Error('No permissions set for route: %r' % route)
+            raise Exception('No permissions set for route: %r' % route)
 
         route.permissions = set(required.split())
 

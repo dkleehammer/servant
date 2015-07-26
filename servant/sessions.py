@@ -90,7 +90,7 @@ class SessionMiddleware:
 
         if not row:
             logger.error('%s: session-id %r not in the database', ctx, sid)
-            ctx.delete_cookie('sid');
+            ctx.delete_cookie('sid')
             return
 
         if _CHECK_IP and ctx.ip != row.ip_address:

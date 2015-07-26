@@ -1,9 +1,7 @@
 
+from .middleware import Middleware
 
-class SecurityHeadersMiddlware:
-    def start(self, ctx):
-        pass
-
+class SecurityHeadersMiddlware(Middleware):
     def complete(self, ctx):
         # ctx.response.headers['Content-Security-Policy']   = "script-src 'self' 'unsafe-eval' ; style-src 'self' 'unsafe-inline'"
         ctx.response.headers['Strict-Transport-Security'] = 'max-age=8640000; includeSubDomains'
