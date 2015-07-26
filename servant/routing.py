@@ -10,26 +10,12 @@ import re, inspect
 from urllib.parse import urlparse
 from asyncio import coroutine
 
+from .middleware import middleware
+
 _routes = []
 # The global list of registered routes as Route objects.
 
-
-# if __debug__:
-#     _ALL_PERMISSIONS = set() # Permissions from the db to help us catch typos
-#     import os, psycopg2
-#
-#     cnxn   = psycopg2.connect(os.environ['DATABASE_URL'])
-#     cursor = cnxn.cursor()
-#     cursor.execute("select permission from permissions")
-#     _ALL_PERMISSIONS.update(row[0] for row in cursor)
-#     cursor.close()
-#     cnxn.close()
-#
-#     _ALL_PERMISSIONS.add('USER')
-#     _ALL_PERMISSIONS.add('PUBLIC')
-
-
-def route(pattern, permissions='USER'):
+def route(pattern, **kwargs):
     """
     The @route decorator used to register URL handlers.  The first parameter of the decorated
     function should be named "ctx".
@@ -39,21 +25,19 @@ def route(pattern, permissions='USER'):
 
       Wrap a component of the path in braces to mark it as a variable ("/file/{filename}").
       The decorated function must take a parameter with this name.
-
-    permissions
-      A whitespace separated list of permissions.  The user must have any (not
-      all) of the permissions to use this route.  This will be checked by the
-      permissions middleware.
-
-      Use the special permission USER to indicate any logged in user can access
-      the page.  Use PUBLIC to indicate anyone can (such as a login page).
     """
-    assert permissions, 'You must supply permissions in @route: pattern=%s' % pattern
     def wrapper(func):
         # # We'll apply the @coroutine so we don't need two decorators.
         # assert not inspect.isgenerator(func) and not inspect.iscoroutine(func)
         assert not any(r.pattern == pattern for r in _routes), 'URL "{}" registered twice: first={} second={}'.format(pattern, _routes[pattern], func)
-        _routes.append(Route(pattern, permissions, func))
+
+        route = Route(pattern, func, kwargs)
+        for m in middleware:
+            f = getattr(m, 'register_route', None)
+            if f:
+                f(route)
+
+        _routes.append(route)
     return wrapper
 
 
@@ -85,7 +69,7 @@ class Route:
     This object is callable like a function and will pick the arguments to the
     URL handler from the request (GET variables, JSON variables, etc.)
     """
-    def __init__(self, pattern, permissions, func):
+    def __init__(self, pattern, func, kwargs):
         """
         pattern: The URL regexp.
         func: The URL handler callback.
@@ -93,12 +77,7 @@ class Route:
         self.pattern = pattern
         self._func = func
         self.func = coroutine(func)
-
-        self.permissions = set(permissions.split())
-        # if __debug__:
-        #     unknown = self.permissions - _ALL_PERMISSIONS
-        #     assert not unknown, "Route {} has invalid permissions: {}.  Did you forget to add them to the database?".format(
-        #         pattern, ','.join(unknown))
+        self.route_keywords = kwargs
 
         self.regexp = None
 

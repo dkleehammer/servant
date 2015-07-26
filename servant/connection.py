@@ -26,6 +26,7 @@ from . import routing
 from .contexts import Context
 from .requests import Request
 from .lowerdict import LowerDict
+from .middleware import middleware
 
 logger = logging.getLogger('web')
 
@@ -48,16 +49,6 @@ class HttpProtocol(Protocol):
 
         self._id = HttpProtocol._next_id
         HttpProtocol._next_id += 1
-
-        self.middleware = []
-        # from .sessions import SessionMiddleware
-        # self.middleware.append(SessionMiddleware())
-        from .permissions import PermissionsMiddleware
-        self.middleware.append(PermissionsMiddleware())
-        from .security_headers import SecurityHeadersMiddlware
-        self.middleware.append(SecurityHeadersMiddlware())
-        from .logging_middleware import LoggingMiddleware
-        self.middleware.append(LoggingMiddleware())
 
         self.ip = None
         # The IP4 address we are directly connected to.
@@ -214,7 +205,7 @@ class HttpProtocol(Protocol):
         # TODO: Errors are not going through the context and middleware.
 
         try:
-            for m in self.middleware:
+            for m in middleware:
                 result = m.start(ctx)
                 if result and inspect.isgenerator(result):
                     # The middleware function is a generator.
@@ -234,7 +225,7 @@ class HttpProtocol(Protocol):
             else:
                 ctx.response.status = 204
 
-            for m in reversed(self.middleware):
+            for m in reversed(middleware):
                 result = m.complete(ctx)
                 if result and inspect.isgenerator(result):
                     # The middleware function is a generator.

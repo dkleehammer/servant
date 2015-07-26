@@ -17,6 +17,25 @@ class PermissionsMiddleware:
       - PUBLIC: public page anyone can access
       - USER: any logged in user can access
     """
+    def __init__(self, allowed):
+        """
+        allowed
+          All allowed permissions, checked using assertions in debug builds.
+        """
+        self.allowed = set(allowed)
+
+    def register_route(self, route):
+        required = route.route_keywords.get('permissions')
+        if not required:
+            raise Error('No permissions set for route: %r' % route)
+
+        route.permissions = set(required.split())
+
+        if __debug__:
+            unknown = route.permissions - self.allowed
+            assert not unknown, "Route {!r} has invalid permissions: {}.".format(route, ','.join(unknown))
+
+
     def start(self, ctx):
         if not ctx.route:
             # This is going to be a 404
