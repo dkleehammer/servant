@@ -1,19 +1,30 @@
 """
 Provides the @route decorator and its implementation.
 
-The decorator creates a Route object, defined here, and stores it in the global
+The decorator creates a DynamicRoute object, defined here, and stores it in the global
 list of routes (`_routes`).  There is also a lookup function to find the
 appropriate route for a URL.
 """
 
+# REVIEW: We could implement static files as middleware, but I don't
+# want to pay the performance penalty.  A single page app is rarely
+# going to load a static file.  Also, if it is a big app it might be
+# using a CDN or proxy and never load a static file
+
 import re, inspect
 from urllib.parse import urlparse
 from asyncio import coroutine
-
 from .middleware import middleware
 
 _routes = []
-# The global list of registered routes as Route objects.
+# The global list of registered routes as DynamicRoute objects.
+
+
+def register_route(r):
+    for m in middleware:
+        m.register_route(r)
+    _routes.append(r)
+
 
 def route(pattern, **kwargs):
     """
@@ -27,11 +38,10 @@ def route(pattern, **kwargs):
       The decorated function must take a parameter with this name.
     """
     def wrapper(func):
-        # # We'll apply the @coroutine so we don't need two decorators.
-        # assert not inspect.isgenerator(func) and not inspect.iscoroutine(func)
-        assert not any(r.pattern == pattern for r in _routes), 'URL "{}" registered twice: first={} second={}'.format(pattern, _routes[pattern], func)
+        # TODO: Convert to "==".
+        assert not any(getattr(r, 'pattern', None) == pattern for r in _routes), 'URL "{}" registered twice: first={} second={}'.format(pattern, _routes[pattern], func)
 
-        r = Route(pattern, func, kwargs)
+        r = DynamicRoute(pattern, func, kwargs)
         for m in middleware:
             m.register_route(r)
 
@@ -61,21 +71,39 @@ def get(url):
 
 class Route:
     """
-    A route mapping, created by the @route decorator, that maps from a URL
-    pattern (e.g. "/static/js/{filename}") to a URL handler function to call.
+    The base class for routes.
+    """
+    def __init__(self, route_keywords=None):
+        self.route_keywords = route_keywords or {}
+
+
+class DynamicRoute(Route):
+    """
+    A route that calls a user-defined function.  Instances of this are
+    registered by the @route decorator.
+
+    Variables can be created in the URL pattern by wrapping components
+    in braces, such as "/static/js/{filename}".
 
     This object is callable like a function and will pick the arguments to the
     URL handler from the request (GET variables, JSON variables, etc.)
     """
-    def __init__(self, pattern, func, kwargs):
+    def __init__(self, pattern, func, route_keywords):
         """
-        pattern: The URL regexp.
-        func: The URL handler callback.
+        pattern
+          The URL regexp.
+
+        func
+          The URL handler callback.
+
+        route_keywords
+          A dictionary of keyword arguments passed to the @route decorator.
         """
+        Route.__init__(self, route_keywords)
+
         self.pattern = pattern
         self._func = func
         self.func = coroutine(func)
-        self.route_keywords = kwargs
 
         self.regexp = None
 
@@ -113,7 +141,7 @@ class Route:
         regexps  = []
         varnames = []
 
-        assert self.pattern.startswith('/'), 'Route patterns must start with "/": {!r}'.format(self.pattern)
+        assert self.pattern.startswith('/'), 'DynamicRoute patterns must start with "/": {!r}'.format(self.pattern)
 
         for part in self.pattern.rstrip('/').split('/'):
             if part.startswith('{') and part.endswith('}'):
@@ -149,5 +177,4 @@ class Route:
         return result
 
     def __repr__(self):
-        return 'Route<{} {}>'.format(self.pattern, self._func)
-
+        return 'DynamicRoute<{} {}>'.format(self.pattern, self._func)

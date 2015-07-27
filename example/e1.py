@@ -23,8 +23,8 @@ def main():
     register_middleware(SecurityHeadersMiddlware())
     register_middleware(LoggingMiddleware())
 
-    staticfiles.register_key('static', join(root, 'static'))
-    staticfiles.register_key('generated', join(root, 'generated'))
+    staticfiles.serve_prefix('/static', join(root, 'static'), permissions='PUBLIC')
+    staticfiles.serve_prefix('/generated', join(root, 'generated'), permissions='PUBLIC')
 
     import e1handlers
 

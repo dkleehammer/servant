@@ -9,9 +9,37 @@
 # To ensure an incremental build that only updates one of the generated files
 # works, the build scripts should always regenerate the index HTML too.
 
+# WARNING
+# -------
+#
+# Python's asyncio does not have an asynchronous way to read files because operating systems
+# don't really support it.  Apparently *nix systems have the API (select with file descriptors)
+# but they always report themselves ready and therefore end up blocking anyway.
+#
+# Python will soon (or may already) support an asynchronous sendfile, which would could try to
+# use.
+#
+# To work around this, we'll simply cache the files in memory.  Due to reference counting,
+# Python is usually very good with memory.  The library is really designed for single page
+# applications where resources are cached at the browser for a year.  (Put your version number
+# on the end!)
+
+# TODO ITEMS
+# ----------
+#
+# We have not implemented compression yet.  I don't believe there are any modern browsers that
+# don't support gzip, so we should only support compression and hold the compressed version in
+# memory.
+#
+# Add a way to register mimetypes.  (Or perhaps use a module that already has them?)
+
+import re
 from os.path import isdir, splitext, abspath, join, exists, isabs
 from logging import getLogger
 from .errors import HttpError
+from asyncio import coroutine
+
+from .routing import Route, register_route
 
 logger = getLogger('static')
 
@@ -25,12 +53,14 @@ map_ext_to_mime = {
     '.woff' : 'application/font-woff',
 }
 
-map_key_to_path = {}
-# Maps from key (e.g. "generated") to the path.
+map_prefix_to_path = {}
+# Maps from URL prefix (e.g. "/static") to the fully-qualified path we
+# should load files from.  By default all files with extensions in
+# map_ext_to_mime are loaded from the path or any subdirectory of the
+# path.
 
 map_path_to_cache = {}
-# Maps from (key, relpath) to http.File entry.
-
+# Maps from fully-qualified filename to a cached http.File entry.
 
 class File:
     def __init__(self, relpath, mimetype, content):
@@ -40,21 +70,53 @@ class File:
         self.compressed = False # True if gzipped
 
 
-def register_key(key, path):
-    assert isabs(path), 'static file key {} path {!r} is not absolute'.format(key, path)
-    assert isdir(path), 'static file key {} path {!r} does not exist'.format(key, path)
-    map_key_to_path[key] = path
+class StaticFileRoute(Route):
+    """
+    A route for serving static files from the static file cache.
+    """
+    def __init__(self, prefix, route_keywords=None):
+        Route.__init__(self, route_keywords=route_keywords)
+
+        self.prefix = prefix
+
+        if not prefix[:-1] == '/':
+            prefix += '/'
+
+        self.regexp = re.compile('^' + re.escape(prefix) + '(.+)')
+
+    def __repr__(self):
+        return 'StaticFileRoute<%s>' % self.prefix
+
+    @coroutine
+    def __call__(self, match, ctx):
+        relpath = match.group(1)
+        return get(self.prefix, relpath)
 
 
-def get_key(key):
-    return map_key_to_path[key]
+def serve_prefix(prefix, path, **route_keywords):
+    """
+    Registers a URL prefix (e.g. "/images") with a directory.  Any URLs starting with this
+    prefix will serve files from the given path or below.
+
+    route_keywords
+      Route keywords.  These are attached to the route for use by middleware.
+    """
+    assert isabs(path), 'static path {!r} for prefix {} is not absolute'.format(path, prefix)
+    assert isdir(path), 'static path {!r} for prefix {} does not exist'.format(path, prefix)
+    map_prefix_to_path[prefix] = path
+
+    register_route(StaticFileRoute(prefix, route_keywords=route_keywords))
 
 
-def get(key, relpath):
+def get(prefix, relpath):
+    """
+    Returns an http.File object for the given URL prefix and path from that prefix.
+    """
+
     entry = map_path_to_cache.get(relpath)
 
-    assert key in map_key_to_path, key + ' is not registered'
-    root = map_key_to_path[key]
+    assert prefix in map_prefix_to_path, "Prefix {!r} is not registered".format(prefix)
+    root = map_prefix_to_path[prefix]
 
     if not entry:
         fqn = abspath(join(root, relpath))
@@ -62,8 +124,13 @@ def get(key, relpath):
             logger.debug('Not found: url=%r fqn=%r', relpath, fqn)
             raise HttpError(404, relpath)
 
-        # TODO: Do more security checking.  Or consider reading the potential files
-        # on startup and only matching those directly.
+        if fqn[:len(root)] != root:
+            # This means someone used ".." to try to move up out of the static directory.  This
+            # very well may be a hack attempt.
+
+            logger.error('SECURITY: Dangerous path in file download?  prefix=%s root=%s relpath=%s fqn=%s',
+                         prefix, root, relpath, fqn)
+            raise HttpError(404, relpath)
 
         ext = splitext(relpath)[1]
         if ext not in map_ext_to_mime:

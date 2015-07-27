@@ -4,6 +4,18 @@ from distutils.errors import *
 import subprocess, os
 from os.path import abspath, isdir, join, dirname, exists
 
+class TestCommand(Command):
+    # This is temporary until we get proper unit tests
+    description = 'runs e1'
+    user_options = []
+    def initialize_options(self): pass
+    def finalize_options(self): pass
+    def run(self):
+        cmd = 'python3 e1.py'
+        p = subprocess.Popen(args=cmd, cwd=join(dirname(abspath(__file__)), 'example'), shell=True)
+        p.wait()
+
+
 class PyLintCommand(Command):
     description = "Runs pylint"
 
@@ -61,7 +73,6 @@ class PyLintCommand(Command):
         if self.verbose >= 2:
             print('cmd:', ' '.join(cmd))
 
-        import subprocess
         return subprocess.call(cmd, env=env)
 
 
@@ -71,5 +82,6 @@ setup(
     version     = '1.0.0',
     cmdclass = {
         'lint' : PyLintCommand,
+        'test' : TestCommand,
     }
 )
