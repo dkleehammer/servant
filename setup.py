@@ -1,11 +1,20 @@
 
-from distutils.core import Command, setup
-from distutils.errors import *
-import subprocess, os
-from os.path import abspath, isdir, join, dirname, exists
+try:
+    # I hate extra stuff, but pip looks at "install_requires" which is
+    # only from setuptools.  Importing it will monkeypatch the dist
+    # system and keep it from complaining about an unknown keyword.
+    from setuptools import setup, Command
+except:
+    from distutils.core import Command, setup
+
+import subprocess
+from os.path import abspath, join, dirname, exists
 
 class TestCommand(Command):
-    # This is temporary until we get proper unit tests
+
+    # This is temporary until we get proper unit tests.  It just makes
+    # it easier to fire up the "e1" test from the root directory.
+
     description = 'runs e1'
     user_options = []
     def initialize_options(self): pass
@@ -43,8 +52,6 @@ class PyLintCommand(Command):
 
     def run(self):
 
-        env = dict(os.environ)
-
         cmd = ['pylint']
 
         # The shared .pylintrc file is stored in this package.
@@ -73,13 +80,17 @@ class PyLintCommand(Command):
         if self.verbose >= 2:
             print('cmd:', ' '.join(cmd))
 
-        return subprocess.call(cmd, env=env)
+        return subprocess.call(cmd)
 
 
 setup(
     name        = 'Servant',
     description = 'Python 3 asyncio web server',
     version     = '1.0.0',
+    packages    = ['servant'],
+    install_requires = [
+        'cookies'
+    ],
     cmdclass = {
         'lint' : PyLintCommand,
         'test' : TestCommand,
