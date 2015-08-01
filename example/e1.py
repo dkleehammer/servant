@@ -14,17 +14,13 @@ def main():
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
 
-    from servant.permissions import PermissionsMiddleware
     from servant.security_headers import SecurityHeadersMiddlware
     from servant.logging_middleware import LoggingMiddleware
-
-    register_middleware(PermissionsMiddleware(['USER', 'PUBLIC', 'test']))
-
     register_middleware(SecurityHeadersMiddlware())
     register_middleware(LoggingMiddleware())
 
-    staticfiles.serve_prefix('/static', join(root, 'static'), permissions='PUBLIC')
-    staticfiles.serve_prefix('/generated', join(root, 'generated'), permissions='PUBLIC')
+    staticfiles.serve_prefix('/static', join(root, 'static'))
+    staticfiles.serve_prefix('/generated', join(root, 'generated'))
 
     import e1handlers
 

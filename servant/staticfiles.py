@@ -104,9 +104,18 @@ def serve_prefix(prefix, path, **route_keywords):
     assert isabs(path), 'static path {!r} for prefix {} is not absolute'.format(path, prefix)
     assert isdir(path), 'static path {!r} for prefix {} does not exist'.format(path, prefix)
     map_prefix_to_path[prefix] = path
-
     register_route(StaticFileRoute(prefix, route_keywords=route_keywords))
 
+
+def path_from_prefix(prefix):
+    """
+    Return the directory that files for the given URL prefix are being
+    served from.
+    """
+    path = map_prefix_to_path.get(prefix)
+    if not path:
+        raise Exception('The prefix {!r} is not being served'.format(prefix))
+    return path
 
 def get(prefix, relpath):
     """
