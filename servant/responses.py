@@ -109,7 +109,7 @@ class Response:
                 self.status = 204
             return None
 
-        if isinstance(body, dict):
+        if isinstance(body, dict) or isinstance(body, list):
             self.headers['content-type']  = 'text/json'
             self.headers['cache-control'] = CACHE_CONTROL_NEVER
             return json.dumps(body).encode('utf8')
