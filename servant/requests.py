@@ -29,6 +29,9 @@ class Request:
     """
     _next_id = 1
 
+    _ohook = None
+    # The json.loads object_hook.  Set this using configuration.config(decode_hook).
+
     def __init__(self, cnxn, method, url, headers, body):
         self.cnxn    = cnxn
         self.method  = method
@@ -68,6 +71,7 @@ class Request:
                 return { key: val[0] for (key, val) in parse_qs(self.body.decode('utf8'), True).items() }
 
             if ct == 'application/json':
-                return json.loads(self.body.decode('utf8'))
+                s = self.body.decode('UTF-8')
+                return json.loads(s, object_hook=Request._ohook)
 
         return None
