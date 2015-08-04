@@ -3,8 +3,6 @@ The context object stores all of the information in the request and the
 response.  It provides convenience methods to "pass-through" to those objects.
 """
 
-import os, binascii
-# from .sessions import Session
 from .responses import Response
 
 class Context:
@@ -25,20 +23,11 @@ class Context:
         self.request = request
         self.response = Response()
 
-        cookie = request.cookies.get('sid', None)
-        self.sid = cookie and cookie.value or None
-
-        self.session = None
-
         self.ip = ip
         # The most likely address of the client.  If an X-Forwarded-For header
         # is present it is used.  Otherwise the address of the actual connection
         # is used.  Note that there is no way to ensure this is valid so be
         # careful when using it.
-
-        self._deleted_session = None
-        # If a session needs to be deleted it is stored here.  Note that if we
-        # replace a session and create one we'll have two!
 
     def __repr__(self):
         return repr(self.request)
@@ -111,11 +100,3 @@ class Context:
         """
         self.response.delete_cookie(name)
 
-
-def genrandom(length):
-    """
-    Returns a random value of the given number of bytes as a hex string.
-    The hex string will be twice as long as length.
-    """
-    token = os.urandom(length)
-    return binascii.hexlify(token).decode('utf-8')
