@@ -10,6 +10,8 @@ sys.path.insert(0, dirname(root))
 import asyncio
 from servant import HttpProtocol, staticfiles, register_middleware
 
+from datetime import datetime
+
 def main():
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
@@ -21,6 +23,9 @@ def main():
 
     staticfiles.serve_prefix('/static', join(root, 'static'))
     staticfiles.serve_prefix('/generated', join(root, 'generated'))
+
+    from servant import configuration
+    configuration.config(decode_hook=_json_load_object_hook, encode_hook=_json_save_hook)
 
     import e1handlers
 
@@ -39,6 +44,17 @@ def main():
     loop.close()
 
 
+def _json_load_object_hook(d):
+    n = d.get('__dt')
+    if type(n) is int:
+        return datetime.fromtimestamp(n / 1000)
+    return d
+
+
+def _json_save_hook(obj):
+    if type(obj) is datetime:
+        return { '__dt' : obj.timestamp() * 1000 }
+    raise TypeError()
 
 if __name__ == '__main__':
     main()

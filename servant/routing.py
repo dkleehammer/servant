@@ -117,6 +117,18 @@ class DynamicRoute(Route):
         # object (depending on the content-type).  These are the URL handler
         # parameters that are not variables in the URL pattern.
 
+        self.annotations = {}
+        # The optional annotations describing the argument types for the URL handler function.
+        #
+        # This is the annotations from `inspect.getfullargspect`.  It is a mapping from
+        # argument name to its type.  Only arguments that have an annotation are present.
+        #
+        # This is available to the functions reading URL and form variables to provide for
+        # custom conversions, such as from an encoded Javascript date to a Python date,
+        # datetime, or time.  (Javascript's Date always has date and time components, so by
+        # annotating the server component, the system can remove the date or time as necessary
+        # to get exactly the data type.)
+
         self.analyze_pattern()
         self.analyze_params()
 
@@ -125,11 +137,15 @@ class DynamicRoute(Route):
         Analyzes the URL handlers parameters to determine which should come from URL
         variables and which are expected to be in the body.
         """
-        params = inspect.getargspec(self._func).args
-        assert params[0] == 'ctx', 'The first parameter is not `ctx`.  pattern={} callback={}'.format(self.pattern, self._func)
+        spec = inspect.getfullargspec(self._func)
 
-        params = set(params[1:])
-        self.formvars = params - set(self.urlvars)
+        if spec.annotations:
+            self.annotations = spec.annotations
+
+        assert spec.args and spec.args[0] == 'ctx', 'The first parameter is not `ctx`.  pattern={} callback={}'.format(self.pattern, self._func)
+
+        args = set(spec.args[1:])
+        self.formvars = args - set(self.urlvars)
 
     def analyze_pattern(self):
         """

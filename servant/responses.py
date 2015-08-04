@@ -39,6 +39,11 @@ class Response:
     return the value to send.  However, it may set the status, headers, cookies,
     or the body.
     """
+
+    _ohook = None
+    # The JSON encoding hook (json.dumps(default=xx)).  Set this using
+    # configuration.config(encode_hook).
+
     def __init__(self):
         self.status  = None
         self.headers = LowerDict()
@@ -111,13 +116,9 @@ class Response:
             return None
 
         if isinstance(body, dict) or isinstance(body, list):
-            self.headers['content-type']  = 'text/json'
+            self.headers['content-type']  = 'application/json'
             self.headers['cache-control'] = CACHE_CONTROL_NEVER
-
-            # lambda to handle datetime datetime or date objects during conversion to JSON.  Standard datetime objects are not JSON serializable.
-            dthandler = lambda obj: obj.isoformat() if isinstance(obj, (datetime.datetime, datetime.date)) else json.JSONEncoder().default(obj)
-            
-            return json.dumps(body, default=dthandler).encode('utf8')
+            return json.dumps(body, default=Response._ohook).encode('utf8')
 
         if isinstance(body, File):
             # REVIEW: This is hardcoded.  We need an initialization

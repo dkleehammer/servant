@@ -5,28 +5,29 @@
 //
 // Also use cookie-to-header CSRF mitigation.
 
-
 $.ajaxSetup({
   type: 'POST',
   contentType: 'application/json',
-  converters: { 'text JSON': parseAndDecodeJSON },
+  converters: { 'text json': parseAndDecodeJSON },
   processData: false, // disable jQuery.param processing
 });
 
-var reCSRF = /(?:^|; )csrf=([^;]+)/;
+// var reCSRF = /(?:^|; )csrf=([^;]+)/;
 
 $.ajaxPrefilter(function(options, originalOptions, jqXHR) {
   if (options.contentType === 'application/json' && typeof options.data === 'object') {
     options.data = JSON.stringify(encode(options.data));
   }
 
-  var match = reCSRF.exec(document.cookie);
-  if (match) {
-    options.headers = { 'X-CSRF-Token': match[1] };
-  }
+  //  var match = reCSRF.exec(document.cookie);
+  //  if (match) {
+  //    options.headers = { 'X-CSRF-Token': match[1] };
+  //  }
 });
 
 function parseAndDecodeJSON(text) {
+  console.log('PARSE');
+
   var json = $.parseJSON(text);
   return decode(json);
 }
@@ -52,7 +53,7 @@ function encode(obj) {
         value = current[i];
         if (value) {
           if (value instanceof Date) {
-            current[i] = { "$date$" : value.valueOf() };
+            current[i] = { "__dt" : value.valueOf() };
           } else if (typeof value === 'object') { // object and array
             queue.push(value);
           }
@@ -67,7 +68,7 @@ function encode(obj) {
 
           if (value) {
             if (value instanceof Date) {
-              current[prop] = { "$date$" : value.valueOf() };
+              current[prop] = { "__dt" : value.valueOf() };
             } else if (typeof value === 'object') { // object and array
               queue.push(value);
             }
@@ -83,7 +84,9 @@ function encode(obj) {
 }
 
 function decode(obj) {
-  // Cycle through all objects and convert $date$ and $id$ back to Date objects.
+  // Cycle through all objects and convert __dt back to Date objects.
+
+  console.log('decode start')
 
   var queue = [ obj ];
 
@@ -99,8 +102,8 @@ function decode(obj) {
           if (Array.isArray(value)) {
             queue.push(value);
           } else if (typeof value === 'object') {
-            if (value['$date$']) {
-              current[i] = new Date(value['$date$']);
+            if (value['__dt']) {
+              current[i] = new Date(value['__dt']);
             } else {
               queue.push(value);
             }
@@ -119,8 +122,8 @@ function decode(obj) {
           if (Array.isArray(value)) {
             queue.push(value);
           } else {
-            if (value['$date$']) {
-              current[prop] = new Date(value['$date$']);
+            if (value['__dt']) {
+              current[prop] = new Date(value['__dt']);
             } else {
               queue.push(value);
             }
