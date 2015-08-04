@@ -7,6 +7,7 @@ from . import errors
 from .staticfiles import File
 import json
 from .lowerdict import LowerDict
+import datetime
 
 HTTP_COOKIE_PATH   = '/'
 HTTP_COOKIE_SECURE = ''
@@ -112,7 +113,11 @@ class Response:
         if isinstance(body, dict) or isinstance(body, list):
             self.headers['content-type']  = 'text/json'
             self.headers['cache-control'] = CACHE_CONTROL_NEVER
-            return json.dumps(body).encode('utf8')
+
+            # lambda to handle datetime datetime or date objects during conversion to JSON.  Standard datetime objects are not JSON serializable.
+            dthandler = lambda obj: obj.isoformat() if isinstance(obj, (datetime.datetime, datetime.date)) else json.JSONEncoder().default(obj)
+            
+            return json.dumps(body, default=dthandler).encode('utf8')
 
         if isinstance(body, File):
             # REVIEW: This is hardcoded.  We need an initialization
