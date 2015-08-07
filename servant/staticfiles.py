@@ -33,24 +33,26 @@
 #
 # Add a way to register mimetypes.  (Or perhaps use a module that already has them?)
 
-import re
+import re, gzip
 from os.path import isdir, splitext, abspath, join, exists, isabs
 from logging import getLogger
 from .errors import HttpError
 from asyncio import coroutine
+from collections import namedtuple
 
 from .routing import Route, register_route
 
 logger = getLogger('static')
 
+Ext = namedtuple('Ext', 'mimetype compress')
 map_ext_to_mime = {
-    '.css'  : 'text/css',
-    '.gif'  : 'image/gif' ,
-    '.html' : 'text/html',
-    '.js'   : 'text/javascript',
-    '.map'  : 'application/json',
-    '.png'  : 'image/png',
-    '.woff' : 'application/font-woff',
+    '.css' : Ext(mimetype='text/css', compress=True),
+    '.gif' : Ext(mimetype='image/gif' , compress=False),
+    '.html': Ext(mimetype='text/html', compress=True),
+    '.js'  : Ext(mimetype='text/javascript', compress=True),
+    '.map' : Ext(mimetype='application/json', compress=True),
+    '.png' : Ext(mimetype='image/png', compress=False),
+    '.woff': Ext(mimetype='application/font-woff', compress=False)
 }
 
 map_prefix_to_path = {}
@@ -63,11 +65,11 @@ map_path_to_cache = {}
 # Maps from fully-qualified filename to a cached http.File entry.
 
 class File:
-    def __init__(self, relpath, mimetype, content):
+    def __init__(self, relpath, mimetype, content, compressed=False):
         self.relpath    = relpath
         self.mimetype   = mimetype
         self.content    = content
-        self.compressed = False # True if gzipped
+        self.compressed = compressed # True if gzipped
 
 
 class StaticFileRoute(Route):
@@ -91,6 +93,10 @@ class StaticFileRoute(Route):
     def __call__(self, match, ctx):
         relpath = match.group(1)
         return get(self.prefix, relpath)
+
+
+def register_file_type(ext, mimetype='', compress=''):
+    map_ext_to_mime[ext] = Ext(mimetype=mimetype, compress=compress or False)
 
 
 def serve_prefix(prefix, path, **route_keywords):
@@ -146,7 +152,13 @@ def get(prefix, relpath):
             raise Exception('No mimetype for "{}" (from {!r})'.format(ext, relpath))
 
         content = open(fqn, 'rb').read()
-        entry = File(relpath, map_ext_to_mime[ext], content)
+        extinfo = map_ext_to_mime[ext]
+
+        if extinfo.compress:
+            # compress using gzip
+            content = gzip.compress(content)
+
+        entry = File(relpath, extinfo.mimetype, content, extinfo.compress)
 
         map_path_to_cache[relpath] = entry
 

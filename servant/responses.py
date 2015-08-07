@@ -2,7 +2,7 @@
 Provides the Response object.
 """
 
-import os
+import os, gzip
 from . import errors
 from .staticfiles import File
 import json
@@ -116,9 +116,16 @@ class Response:
             return None
 
         if isinstance(body, dict) or isinstance(body, list):
+            content = json.dumps(body, default=Response._ohook).encode('utf8')
+
+            # compress above 200 bytes
+            if len(content) > 200:
+                self.headers['content-encoding'] = 'gzip'
+                content = gzip.compress(content)
+
             self.headers['content-type']  = 'application/json'
             self.headers['cache-control'] = CACHE_CONTROL_NEVER
-            return json.dumps(body, default=Response._ohook).encode('utf8')
+            return content
 
         if isinstance(body, File):
             # REVIEW: This is hardcoded.  We need an initialization
@@ -147,6 +154,11 @@ class Response:
                     return None
 
             self.headers['content-type'] = body.mimetype
+
+            # set gzip header if compressed
+            if body.compressed:
+                self.headers['content-encoding'] = 'gzip'
+
             return body.content
 
         raise Exception('Unsupported data returned from handler: request={} data={} {!r}'.format(self, type(body), body))
