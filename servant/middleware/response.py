@@ -1,4 +1,5 @@
 
+import gzip
 from servant import File
 from servant.middleware import Middleware
 
@@ -24,6 +25,10 @@ class ResponseMiddleware(Middleware):
             response.body   = json.dumps(body, default=Response._ohook).encode('utf8')
             response.headers['content-type']   = 'application/json'
             response.headers['content-length'] = len(body.content)
+
+            if len(response.body) > 200:
+                response.headers['content-encoding'] = 'gzip'
+                response.body = gzip.compress(response.body)
             return
 
         if isinstance(body, File):
@@ -34,6 +39,9 @@ class ResponseMiddleware(Middleware):
 
             if body.etag:
                 response.headers['etag'] = file.etag
+
+            if body.compressed:
+                response.headers['content-encoding'] = 'gzip'
 
             response.body = body.content
             response.headers['content-type']   = body.mimetype

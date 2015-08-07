@@ -2,7 +2,7 @@
 Provides the Response object.
 """
 
-import os, logging, datetime, json
+import os, logging, gzip
 from . import errors
 from .staticfiles import File
 from .lowerdict import LowerDict

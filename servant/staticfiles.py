@@ -33,24 +33,35 @@
 #
 # Add a way to register mimetypes.  (Or perhaps use a module that already has them?)
 
-import re
+import re, gzip
 from os.path import isdir, splitext, abspath, join, exists, isabs
 from logging import getLogger
 from .errors import HttpError
 from asyncio import coroutine
+from collections import namedtuple
 
 from .routing import Route, register_route
 
 logger = getLogger('static')
 
+Ext = namedtuple('Ext', 'mimetype compress')
 map_ext_to_mime = {
-    '.css'  : 'text/css',
-    '.gif'  : 'image/gif' ,
-    '.html' : 'text/html',
-    '.js'   : 'text/javascript',
-    '.map'  : 'application/json',
-    '.png'  : 'image/png',
-    '.woff' : 'application/font-woff',
+    '.css'  : Ext('text/css', True),
+    '.eot'  : Ext('application/vnd.ms-fontobject', True),
+    '.gif'  : Ext('image/gif' , False),
+    '.html' : Ext('text/html', True),
+    '.jpe'  : Ext('image/jpeg', False),
+    '.jpeg' : Ext('image/jpeg', False),
+    '.jpg'  : Ext('image/jpeg', False),
+    '.js'   : Ext('text/javascript', True),
+    '.map'  : Ext('application/json', True),
+    '.otf'  : Ext('application/x-font-otf', True),
+    '.png'  : Ext('image/png', False),
+    '.svg'  : Ext('image/svg', True),
+    '.svgz' : Ext('image/svgz', True),
+    '.ttf'  : Ext('application/x-font-ttf', True),
+    '.woff' : Ext('application/font-woff', False),
+    '.woff2': Ext('application/font-woff2', False)
 }
 
 map_prefix_to_path = {}
@@ -63,11 +74,11 @@ map_path_to_cache = {}
 # Maps from fully-qualified filename to a cached http.File entry.
 
 class File:
-    def __init__(self, relpath, mimetype, content):
+    def __init__(self, relpath, mimetype, content, compressed):
         self.relpath    = relpath
         self.mimetype   = mimetype
         self.content    = content
-        self.compressed = False # True if gzipped
+        self.compressed = compressed # True if gzipped
         self.etag       = None
 
 
@@ -92,6 +103,10 @@ class StaticFileRoute(Route):
     def __call__(self, match, ctx):
         relpath = match.group(1)
         return get(self.prefix, relpath)
+
+
+def register_file_type(ext, mimetype=None, compress=None):
+    map_ext_to_mime[ext] = Ext(mimetype=mimetype, compress=compress)
 
 
 def serve_prefix(prefix, path, **route_keywords):
@@ -147,7 +162,13 @@ def get(prefix, relpath):
             raise Exception('No mimetype for "{}" (from {!r})'.format(ext, relpath))
 
         content = open(fqn, 'rb').read()
-        entry = File(relpath, map_ext_to_mime[ext], content)
+        extinfo = map_ext_to_mime[ext]
+
+        if extinfo.compress:
+            # compress using gzip
+            content = gzip.compress(content)
+
+        entry = File(relpath, extinfo.mimetype, content, extinfo.compress)
 
         map_path_to_cache[relpath] = entry
 
