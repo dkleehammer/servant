@@ -1,6 +1,7 @@
 
-import gzip
+import gzip, json
 from servant import File
+from servant.responses import Response
 from servant.middleware import Middleware
 
 class ResponseMiddleware(Middleware):
@@ -23,12 +24,13 @@ class ResponseMiddleware(Middleware):
         if isinstance(body, dict) or isinstance(body, list):
             response.status = 200
             response.body   = json.dumps(body, default=Response._ohook).encode('utf8')
-            response.headers['content-type']   = 'application/json'
-            response.headers['content-length'] = len(body.content)
 
             if len(response.body) > 200:
                 response.headers['content-encoding'] = 'gzip'
                 response.body = gzip.compress(response.body)
+                
+            response.headers['content-type']   = 'application/json'
+            response.headers['content-length'] = len(response.body)
             return
 
         if isinstance(body, File):
@@ -45,7 +47,7 @@ class ResponseMiddleware(Middleware):
 
             response.body = body.content
             response.headers['content-type']   = body.mimetype
-            response.headers['content-length'] = len(body.content)
+            response.headers['content-length'] = len(response.body)
 
             return
 

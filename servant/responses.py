@@ -7,19 +7,9 @@ from . import errors
 from .staticfiles import File
 from .lowerdict import LowerDict
 
+# TODO:: Need to enable way to make this secure.
 HTTP_COOKIE_PATH   = '/'
 HTTP_COOKIE_SECURE = ''
-
-# REVIEW: I was using the application version as an etag for the HTML,
-# etc.  This will need to be switched to the SHA1 of each file or
-# something.  (Would would mean we can't stream responses since we
-# need the contents to create the etag.)
-APP_VERSION = os.environ.get('APP_VERSION', None)
-APP_VERSION_BYTES = APP_VERSION and APP_VERSION.encode('utf8') or None
-
-CACHE_CONTROL_NEVER   = 'max-age=0, no-cache, no-store'
-CACHE_CONTROL_HOUR    = 'private, max-age=3600'     # 1 hour
-CACHE_CONTROL_FOREVER = 'private, max-age=31536000' # 1 year
 
 logger = logging.getLogger('servant')
 
