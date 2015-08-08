@@ -1,5 +1,5 @@
 
-from .middleware import Middleware
+from . import Middleware
 import logging
 from time import perf_counter
 

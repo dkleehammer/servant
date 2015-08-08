@@ -1,5 +1,5 @@
 
-from .middleware import Middleware
+from . import Middleware
 
 class SecurityHeadersMiddlware(Middleware):
     def complete(self, ctx):

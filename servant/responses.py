@@ -2,12 +2,10 @@
 Provides the Response object.
 """
 
-import os
+import os, logging, datetime, json
 from . import errors
 from .staticfiles import File
-import json
 from .lowerdict import LowerDict
-import datetime
 
 HTTP_COOKIE_PATH   = '/'
 HTTP_COOKIE_SECURE = ''
@@ -23,6 +21,7 @@ CACHE_CONTROL_NEVER   = 'max-age=0, no-cache, no-store'
 CACHE_CONTROL_HOUR    = 'private, max-age=3600'     # 1 hour
 CACHE_CONTROL_FOREVER = 'private, max-age=31536000' # 1 year
 
+logger = logging.getLogger('servant')
 
 def itob(n):
     """
@@ -70,16 +69,29 @@ class Response:
         Called at the end of processing to send response to the browser.  Do not
         call this from a URL handler.
         """
-        body = self._format_body(ctx)
+        status = self.status
+        body   = self.body
 
-        assert body is None or 'cache-control' in self.headers, 'status=%s body=%s headers=%s' % (self.status, type(self.body), ' '.join(self.headers.keys()))
+        if type(body) not in (type(None), bytes):
+            # (In development, assert which will raise an exception.  If it gets out of
+            # development, log it and return an error to the browser.)
+            logger.error('Response is not bytes: {} {!r}'.format(type(body), body))
+            raise AssertionError('Response is not bytes: {} {!r}'.format(type(body), body))
+            status = 500
+            body   = None
+
+        if not status:
+            if body is None:
+                status = 204
+            else:
+                status = 200
 
         if body is not None:
-            self.headers['content-length'] = len(body)
+            self.headers['content-length'] = str(len(body))
 
-        status = self.status or (200 if body is not None else 204)
-
-        assert body is None or 'content-length' in self.headers
+        if __debug__:
+            for key, val in self.headers.items():
+                assert type(val) is str, 'Header %s value is not a string: val=%r type=%s' % (key, val, type(val))
 
         headers = '\r\n'.join('{}: {}'.format(k,v) for k,v in self.headers.items())
 
@@ -100,53 +112,3 @@ class Response:
             parts.append(body)
 
         transport.writelines(parts)
-
-
-    def _format_body(self, ctx):
-        """
-        Convert the response body into bytes and return it.
-
-        This may update `self.status` and `self.headers`.
-        """
-        body = self.body
-
-        if body is None:
-            if self.status is None:
-                self.status = 204
-            return None
-
-        if isinstance(body, dict) or isinstance(body, list):
-            self.headers['content-type']  = 'application/json'
-            self.headers['cache-control'] = CACHE_CONTROL_NEVER
-            return json.dumps(body, default=Response._ohook).encode('utf8')
-
-        if isinstance(body, File):
-            # REVIEW: This is hardcoded.  We need an initialization
-            # function or something to set things like this.
-            if APP_VERSION and APP_VERSION != 'dev':
-                self.headers['etag'] = APP_VERSION_BYTES
-
-                if body.relpath.endswith('/index.html'):
-                    self.headers['cache-control'] = CACHE_CONTROL_HOUR
-                else:
-                    self.headers['cache-control'] = CACHE_CONTROL_FOREVER
-
-            else:
-                # In development do not cache anything.
-                self.headers['cache-control'] = CACHE_CONTROL_NEVER
-
-            # (I've put this here so we get the cache-control header even on a
-            # 304.  Is that right?)
-
-            if APP_VERSION and APP_VERSION != 'dev':
-                # If the browser has supplied a previous etag and it matches,
-                # return a 304.
-                oldetag = ctx.request.headers.get('if-none-match', None)
-                if oldetag and body.etag == oldetag:
-                    self.status = 304
-                    return None
-
-            self.headers['content-type'] = body.mimetype
-            return body.content
-
-        raise Exception('Unsupported data returned from handler: request={} data={} {!r}'.format(self, type(body), body))

@@ -214,22 +214,7 @@ class HttpProtocol(Protocol):
             if not self.route:
                 raise HttpError(404, ctx.url)
 
-            body = yield from self.route(self.match, ctx)
-
-            if body is not None:
-                # (The "if" ensures we don't overwrite the body if the handler
-                # actually set it directlry using `ctx.response.body=x`)
-                ctx.response.body = body
-                if not ctx.response.status:
-                    ctx.response.status = 200
-            else:
-                ctx.response.status = 204
-
-            for m in reversed(middleware):
-                result = m.complete(ctx)
-                if result and inspect.isgenerator(result):
-                    # The middleware function is a generator.
-                    yield from result
+            ctx.response.body = yield from self.route(self.match, ctx)
 
         except HttpError as ex:
             ctx.response.status = ex.code
@@ -240,6 +225,12 @@ class HttpProtocol(Protocol):
             ctx.response.status = 500
             self.error('Unhandled error in %s', self.route, exc_info=True)
             self._complete_with_error(500)
+
+        for m in reversed(middleware):
+            result = m.complete(ctx)
+            if result and inspect.isgenerator(result):
+                # The middleware function is a generator.
+                yield from result
 
         try:
             ctx.response._send(ctx, self.transport)

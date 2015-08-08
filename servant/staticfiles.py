@@ -68,6 +68,7 @@ class File:
         self.mimetype   = mimetype
         self.content    = content
         self.compressed = False # True if gzipped
+        self.etag       = None
 
 
 class StaticFileRoute(Route):
