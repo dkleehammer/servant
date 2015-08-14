@@ -86,7 +86,7 @@ class PyLintCommand(Command):
 setup(
     name        = 'Servant',
     description = 'Python 3 asyncio web server',
-    version     = '1.0.0',
+    version     = '1.1.1',
     packages    = ['servant'],
     install_requires = [
         'cookies'
