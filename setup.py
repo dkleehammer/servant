@@ -7,6 +7,8 @@ try:
 except:
     from distutils.core import Command, setup
 
+import versioneer
+
 import subprocess
 from os.path import abspath, join, dirname, exists
 
@@ -83,16 +85,19 @@ class PyLintCommand(Command):
         return subprocess.call(cmd)
 
 
+cmdclass = versioneer.get_cmdclass()
+cmdclass.update({
+    'lint' : PyLintCommand,
+    'test' : TestCommand,
+})
+
 setup(
     name        = 'Servant',
     description = 'Python 3 asyncio web server',
-    version     = '1.1.2',
+    version=versioneer.get_version(),
     packages    = ['servant', 'servant.middleware'],
     install_requires = [
         'cookies'
     ],
-    cmdclass = {
-        'lint' : PyLintCommand,
-        'test' : TestCommand,
-    }
+    cmdclass = cmdclass
 )

@@ -6,3 +6,7 @@ from .staticfiles import File
 from .routing import route
 from .middleware import middleware
 from .middleware import register as register_middleware
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
