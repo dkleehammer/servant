@@ -26,22 +26,27 @@ def register_route(r):
     _routes.append(r)
 
 
-def route(pattern, **kwargs):
+def route(pattern, *, logger=None, **kwargs):
     """
-    The @route decorator used to register URL handlers.  The first parameter of the decorated
-    function should be named "ctx".
+    The @route decorator used to register URL handlers.  The first parameter of
+    the decorated function should be named "ctx".
 
     pattern
       The pattern for the URL the decorated function will handle.
 
-      Wrap a component of the path in braces to mark it as a variable ("/file/{filename}").
-      The decorated function must take a parameter with this name.
+      Wrap a component of the path in braces to mark it as a variable
+      ("/file/{filename}").  The decorated function must take a parameter with
+      this name.
+
+    logger
+      Optional Python logging.Logger instance.  If provided, the route
+      parameters will be logged to it using logger.debug.
     """
     def wrapper(func):
         # TODO: Convert to "==".
         assert not any(getattr(r, 'pattern', None) == pattern for r in _routes), 'URL "{}" registered twice: first={} second={}'.format(pattern, _routes[pattern], func)
 
-        r = DynamicRoute(pattern, func, kwargs)
+        r = DynamicRoute(pattern, func, kwargs, logger=logger)
         for m in middleware:
             m.register_route(r)
 
@@ -73,8 +78,9 @@ class Route:
     """
     The base class for routes.
     """
-    def __init__(self, route_keywords=None):
+    def __init__(self, route_keywords=None, *, logger=None):
         self.route_keywords = route_keywords or {}
+        self.logger = logger
 
 
 class DynamicRoute(Route):
@@ -88,7 +94,7 @@ class DynamicRoute(Route):
     This object is callable like a function and will pick the arguments to the
     URL handler from the request (GET variables, JSON variables, etc.)
     """
-    def __init__(self, pattern, func, route_keywords):
+    def __init__(self, pattern, func, route_keywords, *, logger=None):
         """
         pattern
           The URL regexp.
@@ -99,7 +105,7 @@ class DynamicRoute(Route):
         route_keywords
           A dictionary of keyword arguments passed to the @route decorator.
         """
-        Route.__init__(self, route_keywords)
+        Route.__init__(self, route_keywords=route_keywords, logger=logger)
 
         self.pattern = pattern
         self._func = func
@@ -188,6 +194,9 @@ class DynamicRoute(Route):
         if self.formvars:
             assert ctx.request.form, 'No variables: %r' % ctx
             args.update({ name: ctx.request.form.get(name, None) for name in self.formvars })
+
+        if self.logger:
+            self.logger.debug('URL: %s params=%r', self.pattern, args)
 
         result = yield from self.func(**args)
         return result
