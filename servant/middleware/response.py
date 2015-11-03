@@ -51,5 +51,5 @@ class ResponseMiddleware(Middleware):
 
             return
 
-        if typeof(body) is not bytes:
+        if not isinstance(body, bytes):
             raise Exception('Response is not bytes: ctx=%s resp=%s' % (ctx, body))
