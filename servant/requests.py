@@ -70,6 +70,7 @@ class Request:
             if ct == 'application/x-www-form-urlencoded':
                 return { key: val[0] for (key, val) in parse_qs(self.body.decode('utf8'), True).items() }
 
+            # TODO: Look for charset, etc.
             if ct == 'application/json':
                 s = self.body.decode('UTF-8')
                 return json.loads(s, object_hook=Request._ohook)

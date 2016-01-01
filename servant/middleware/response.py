@@ -45,7 +45,8 @@ class ResponseMiddleware(Middleware):
             if body.compressed:
                 response.headers['content-encoding'] = 'gzip'
 
-            response.body = body.content
+            response.status = 200
+            response.body   = body.content
             response.headers['content-type']   = body.mimetype
             response.headers['content-length'] = len(response.body)
 
