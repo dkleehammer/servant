@@ -40,7 +40,7 @@ class ResponseMiddleware(Middleware):
                 return
 
             if body.etag:
-                response.headers['etag'] = file.etag
+                response.headers['etag'] = body.etag
 
             if body.compressed:
                 response.headers['content-encoding'] = 'gzip'
