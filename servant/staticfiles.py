@@ -50,6 +50,7 @@ map_ext_to_mime = {
     '.eot'  : Ext('application/vnd.ms-fontobject', True),
     '.gif'  : Ext('image/gif' , False),
     '.html' : Ext('text/html', True),
+    '.ico'  : Ext('image/ico', False),
     '.jpe'  : Ext('image/jpeg', False),
     '.jpeg' : Ext('image/jpeg', False),
     '.jpg'  : Ext('image/jpeg', False),
