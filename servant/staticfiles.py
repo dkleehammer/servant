@@ -42,6 +42,8 @@ from collections import namedtuple
 
 from .routing import Route, register_route
 
+use_cache = True
+
 logger = getLogger('static')
 
 Ext = namedtuple('Ext', 'mimetype compress')
@@ -139,7 +141,7 @@ def get(prefix, relpath):
     Returns an http.File object for the given URL prefix and path from that prefix.
     """
 
-    entry = map_path_to_cache.get(relpath)
+    entry = map_path_to_cache.get(relpath) if use_cache else None
 
     assert prefix in map_prefix_to_path, "Prefix {!r} is not registered".format(prefix)
     root = map_prefix_to_path[prefix]
@@ -171,6 +173,7 @@ def get(prefix, relpath):
 
         entry = File(relpath, extinfo.mimetype, content, extinfo.compress)
 
-        map_path_to_cache[relpath] = entry
+        if use_cache:
+            map_path_to_cache[relpath] = entry
 
     return entry
